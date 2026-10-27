@@ -4,12 +4,12 @@ __pycache__/
 *.pyc
 
 # Données et modèles lourds (gérés par DVC, pas par Git)
-data/raw/*
-data/processed/*
+data/raw/*.parquet
+data/raw/*.csv
+data/processed/*.parquet
+data/processed/*.csv
 models/*.pkl
 models/*.joblib
-!data/raw/.gitkeep
-!data/processed/.gitkeep
 
 # MLflow local
 mlruns/
