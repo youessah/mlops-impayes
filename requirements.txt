@@ -13,3 +13,4 @@ uvicorn
 pydantic
 pytest
 ruff
+httpx
