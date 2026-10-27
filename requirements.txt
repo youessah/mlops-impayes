@@ -1,0 +1,15 @@
+﻿pandas
+pyarrow
+scikit-learn
+xgboost
+mlflow
+dvc
+datasets
+pandera
+pyyaml
+joblib
+fastapi
+uvicorn
+pydantic
+pytest
+ruff
