@@ -1,0 +1,147 @@
+name: MLOps - CI / CT / CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 3 1 * *"   # CT planifié : le 1er de chaque mois
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mlops-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.13"
+
+jobs:
+  ci:
+    name: CI - lint et tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: |
+            requirements-ci.txt
+            requirements-api.txt
+
+      - name: Installer les dépendances
+        run: python -m pip install -r requirements-ci.txt
+
+      - name: Lint (ruff)
+        run: ruff check .
+
+      - name: Tests unitaires
+        run: python -m pytest -q
+
+  train:
+    name: CT - données, entraînement, validation
+    needs: ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: |
+            requirements-ci.txt
+            requirements-api.txt
+
+      - name: Installer les dépendances
+        run: python -m pip install -r requirements-ci.txt
+
+      - name: Télécharger les données (Hugging Face)
+        run: python -m src.data_ingestion
+
+      - name: Valider les données (contrat de qualité)
+        run: python -m src.validate
+
+      - name: Entraîner, évaluer et appliquer la porte de validation
+        run: python -m src.train
+
+      - name: Résumé des métriques
+        run: cat reports/metrics.json >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Archiver le modèle et le suivi MLflow
+        uses: actions/upload-artifact@v4
+        with:
+          name: model-bundle
+          path: |
+            models/model.joblib
+            reports/metrics.json
+            mlflow.db
+          if-no-files-found: error
+          retention-days: 30
+
+  build:
+    name: CD - image Docker, test, publication
+    needs: train
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Récupérer le modèle entraîné
+        uses: actions/download-artifact@v4
+        with:
+          name: model-bundle
+          path: .
+
+      - name: Construire l'image Docker
+        run: docker build -t impayes-api:ci .
+
+      - name: Démarrer le conteneur
+        run: docker run -d --name impayes-api -p 8000:8000 impayes-api:ci
+
+      - name: Attendre que l'API réponde
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8000/health; then exit 0; fi
+            sleep 2
+          done
+          exit 1
+
+      - name: Test de prédiction
+        run: |
+          curl -fsS -X POST http://127.0.0.1:8000/predict \
+            -H "Content-Type: application/json" \
+            -d '{"tenure_months":12,"avg_monthly_spend_ngn":5000,"recharge_frequency_per_month":4,"payment_consistency_score":0.2,"late_payment_count":6,"operator":"MTN","account_type":"prepaid"}' \
+            | tee out.json
+          python3 -c "import json; p=json.load(open('out.json'))['default_probability']; assert 0 <= p <= 1; print('probabilité =', p)"
+
+      - name: Test d'une entrée invalide (doit être rejetée)
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" -X POST http://127.0.0.1:8000/predict \
+            -H "Content-Type: application/json" \
+            -d '{"tenure_months":12,"avg_monthly_spend_ngn":5000,"recharge_frequency_per_month":4,"payment_consistency_score":1.7,"late_payment_count":6,"operator":"MTN","account_type":"prepaid"}')
+          echo "code HTTP = $code"
+          test "$code" = "422"
+
+      - name: Logs du conteneur (en cas d'échec)
+        if: failure()
+        run: docker logs impayes-api
+
+      - name: Publier l'image (GHCR)
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        run: |
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          TAG="ghcr.io/${OWNER}/impayes-api:${GITHUB_SHA::7}"
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          docker tag impayes-api:ci "$TAG"
+          docker push "$TAG"
+          echo "Image publiée : $TAG" >> "$GITHUB_STEP_SUMMARY"

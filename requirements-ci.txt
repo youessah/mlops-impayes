@@ -1,0 +1,9 @@
+-r requirements-api.txt
+mlflow
+pandera
+pyyaml
+matplotlib
+huggingface_hub
+pytest
+httpx
+ruff
