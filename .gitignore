@@ -22,3 +22,7 @@ mlflow.db
 .pytest_cache/
 .ruff_cache/
 logs/
+.venv-evidently/
+reports/_ref.csv
+reports/_cur.csv
+reports/drift_report.html

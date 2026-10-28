@@ -1,0 +1,71 @@
+{
+  "status": "CRITICAL",
+  "action": "DECLENCHER LE PIPELINE DE REENTRAINEMENT (validation + canari avant promotion)",
+  "n_predictions": 500,
+  "quality": {
+    "max_missing_share": 0.0,
+    "ok": true
+  },
+  "feature_drift": {
+    "tenure_months": {
+      "psi": 0.01927499665382243,
+      "ks": 0.028599999999999987,
+      "ref_mean": 60.959,
+      "cur_mean": 59.396,
+      "level": "OK"
+    },
+    "avg_monthly_spend_ngn": {
+      "psi": 3.2077146966665695,
+      "ks": 0.4882,
+      "ref_mean": 25449.510938,
+      "cur_mean": 12186.846199807405,
+      "level": "CRITICAL"
+    },
+    "recharge_frequency_per_month": {
+      "psi": 0.870905355001172,
+      "ks": 0.1538,
+      "ref_mean": 15.506,
+      "cur_mean": 11.764,
+      "level": "CRITICAL"
+    },
+    "payment_consistency_score": {
+      "psi": 0.018384155222783905,
+      "ks": 0.03720000000000001,
+      "ref_mean": 0.49608,
+      "cur_mean": 0.5012000000000001,
+      "level": "OK"
+    },
+    "late_payment_count": {
+      "psi": 5.047589051876498,
+      "ks": 0.5760000000000001,
+      "ref_mean": 2.1896,
+      "cur_mean": 4.358,
+      "level": "CRITICAL"
+    },
+    "operator": {
+      "psi": 0.0055625998206953395,
+      "level": "OK"
+    },
+    "account_type": {
+      "psi": 0.0027575435161636026,
+      "level": "OK"
+    }
+  },
+  "score_drift": {
+    "psi": 1.4392988879094997,
+    "level": "CRITICAL"
+  },
+  "latency_p95_ms": {
+    "value": 5.31,
+    "level": "OK"
+  },
+  "performance": {
+    "n_labels": 500,
+    "f1": 0.4105461393596987,
+    "precision": 0.26265060240963856,
+    "recall": 0.9396551724137931,
+    "f1_drop": 0.15276029725949586,
+    "level": "CRITICAL"
+  },
+  "f1_reference": 0.5633064366191946
+}
