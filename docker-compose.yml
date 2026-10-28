@@ -1,0 +1,12 @@
+services:
+  api:
+    build: .
+    image: impayes-api:1.0.0
+    container_name: impayes-api
+    ports:
+      - "8000:8000"
+    environment:
+      THRESHOLD: "0.5"
+    volumes:
+      - ./logs:/app/logs
+    restart: unless-stopped
